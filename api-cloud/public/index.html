@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Piscine - Pineau</title>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .card h3 {
+            margin-bottom: 15px;
+            color: #4a5568;
+            font-size: 1.3rem;
+        }
+        
+        .current-values {
+            grid-column: 1 / -1;
+        }
+        
+        .values-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .value-item {
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border-radius: 10px;
+            border-left: 4px solid #4299e1;
+            position: relative;
+        }
+        
+        .value-item.normal {
+            border-left-color: #48bb78;
+            background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
+        }
+        
+        .value-item.warning {
+            border-left-color: #ed8936;
+            background: linear-gradient(135deg, #fffbf0 0%, #fef5e7 100%);
+        }
+        
+        .value-item.danger {
+            border-left-color: #e53e3e;
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+        }
+        
+        .value-item .label {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+        
+        .value-item .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .value-item .unit {
+            font-size: 0.8rem;
+            color: #a0aec0;
+        }
+        
+        .value-item .indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .indicator.normal {
+            color: #48bb78;
+        }
+        
+        .indicator.warning {
+            color: #ed8936;
+        }
+        
+        .indicator.danger {
+            color: #e53e3e;
+        }
+        
+        .chart-container {
+            grid-column: 1 / -1;
+            min-height: 500px;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .controls button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .controls button:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+        
+        .controls button.active {
+            background: #2b6cb0;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status.online {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status.offline {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .values-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏊‍♂️ Monitoring Piscine</h1>
+            <p>Surveillance en temps réel de la qualité de l'eau</p>
+            <div class="status online" id="status">● En ligne</div>
+        </div>
+        
+        <div class="dashboard">
+            <div class="card current-values">
+                <h3>📊 Valeurs actuelles</h3>
+                <div class="values-grid" id="currentValues">
+                    <div class="loading">Chargement des données...</div>
+                </div>
+            </div>
+            
+            <div class="card chart-container">
+                <h3>📈 Évolution des paramètres</h3>
+                <div class="controls">
+                    <button onclick="updatePeriod(6)" data-period="6">6h</button>
+                    <button onclick="updatePeriod(24)" data-period="24" class="active">24h</button>
+                    <button onclick="updatePeriod(48)" data-period="48">48h</button>
+                    <button onclick="updatePeriod(168)" data-period="168">7j</button>
+                </div>
+                <div id="chart" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentPeriod = 24;
+        let chart;
+
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE}/api/${endpoint}`);
+                const data = await response.json();
+                return data.success ? data.data : null;
+            } catch (error) {
+                console.error('Erreur fetch:', error);
+                document.getElementById('status').textContent = '● Hors ligne';
+                document.getElementById('status').className = 'status offline';
+                return null;
+            }
+        }
+
+        // Seuils d'alerte pour chaque paramètre
+        const thresholds = {
+            ph: { min: 7.0, max: 7.4, danger_min: 6.8, danger_max: 7.6 },
+            redox: { min: 600, max: 700, danger_min: 550, danger_max: 750 },
+            temperature: { min: 20, max: 28, danger_min: 15, danger_max: 32 },
+            salt: { min: 3.0, max: 5.0, danger_min: 2.5, danger_max: 6.0 }
+        };
+
+        function getStatus(value, param) {
+            if (!value || value === 'N/A') return { status: 'unknown', symbol: '?', text: 'Inconnu' };
+            
+            const val = parseFloat(value);
+            const t = thresholds[param];
+            
+            if (val < t.danger_min || val > t.danger_max) {
+                const symbol = val < t.danger_min ? '⬇️' : '⬆️';
+                return { status: 'danger', symbol, text: val < t.danger_min ? 'Très bas' : 'Très haut' };
+            } else if (val < t.min || val > t.max) {
+                const symbol = val < t.min ? '◀️' : '▶️';
+                return { status: 'warning', symbol, text: val < t.min ? 'Bas' : 'Haut' };
+            } else {
+                return { status: 'normal', symbol: '✅', text: 'Normal' };
+            }
+        }
+
+        async function updateCurrentValues() {
+            const latest = await fetchData('latest');
+            const stats = await fetchData(`stats?hours=${currentPeriod}`);
+            
+            const container = document.getElementById('currentValues');
+            
+            if (!latest) {
+                container.innerHTML = '<div class="loading">Aucune donnée disponible</div>';
+                return;
+            }
+
+            const formatValue = (value, decimals = 1) => {
+                return value ? parseFloat(value).toFixed(decimals) : 'N/A';
+            };
+
+            const lastUpdate = new Date(latest.timestamp).toLocaleString('fr-FR');
+
+            // Analyse des statuts
+            const phStatus = getStatus(latest.ph, 'ph');
+            const redoxStatus = getStatus(latest.redox, 'redox');
+            const tempStatus = getStatus(latest.temperature, 'temperature');
+            const saltStatus = getStatus(latest.salt, 'salt');
+
+            container.innerHTML = `
+                <div class="value-item ${phStatus.status}">
+                    <div class="indicator ${phStatus.status}" title="${phStatus.text}">${phStatus.symbol}</div>
+                    <div class="label">pH</div>
+                    <div class="value">${formatValue(latest.ph, 2)}</div>
+                    <div class="unit">pH (7.0-7.4)</div>
+                </div>
+                <div class="value-item ${redoxStatus.status}">
+                    <div class="indicator ${redoxStatus.status}" title="${redoxStatus.text}">${redoxStatus.symbol}</div>
+                    <div class="label">Redox</div>
+                    <div class="value">${formatValue(latest.redox, 0)}</div>
+                    <div class="unit">mV (600-700)</div>
+                </div>
+                <div class="value-item ${tempStatus.status}">
+                    <div class="indicator ${tempStatus.status}" title="${tempStatus.text}">${tempStatus.symbol}</div>
+                    <div class="label">Température</div>
+                    <div class="value">${formatValue(latest.temperature)}</div>
+                    <div class="unit">°C (20-28)</div>
+                </div>
+                <div class="value-item ${saltStatus.status}">
+                    <div class="indicator ${saltStatus.status}" title="${saltStatus.text}">${saltStatus.symbol}</div>
+                    <div class="label">Sel</div>
+                    <div class="value">${formatValue(latest.salt)}</div>
+                    <div class="unit">g/L (3-5)</div>
+                </div>
+                <div class="value-item" style="grid-column: 1 / -1; text-align: center; background: #e2e8f0;">
+                    <div class="label">Dernière mise à jour</div>
+                    <div class="value" style="font-size: 1.2rem;">${lastUpdate}</div>
+                </div>
+            `;
+        }
+
+        async function updateChart() {
+            const chartData = await fetchData(`chart-data?hours=${currentPeriod}&interval=hour`);
+            
+            if (!chartData || !chartData.categories || chartData.categories.length === 0) {
+                document.getElementById('chart').innerHTML = '<div class="loading">Aucune donnée pour cette période</div>';
+                return;
+            }
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = Highcharts.chart('chart', {
+                chart: {
+                    type: 'line',
+                    backgroundColor: 'transparent'
+                },
+                title: {
+                    text: `Évolution sur ${currentPeriod}h`,
+                    style: { color: '#4a5568' }
+                },
+                xAxis: {
+                    categories: chartData.categories,
+                    title: { text: 'Temps' }
+                },
+                yAxis: [
+                    {
+                        title: { text: 'pH', style: { color: '#e53e3e' } },
+                        min: 6.5,
+                        max: 8.5,
+                        opposite: false
+                    },
+                    {
+                        title: { text: 'Redox (mV)', style: { color: '#3182ce' } },
+                        min: 400,
+                        max: 800,
+                        opposite: true
+                    },
+                    {
+                        title: { text: 'Température (°C)', style: { color: '#38a169' } },
+                        min: 15,
+                        max: 35,
+                        opposite: false
+                    },
+                    {
+                        title: { text: 'Sel (g/L)', style: { color: '#d69e2e' } },
+                        min: 0,
+                        max: 6,
+                        opposite: true
+                    }
+                ],
+                series: [
+                    {
+                        name: 'pH',
+                        data: chartData.series[0].data,
+                        yAxis: 0,
+                        color: '#e53e3e',
+                        marker: { radius: 3 }
+                    },
+                    {
+                        name: 'Redox (mV)',
+                        data: chartData.series[1].data,
+                        yAxis: 1,
+                        color: '#3182ce',
+                        marker: { radius: 3 }
+                    },
+                    {
+                        name: 'Température (°C)',
+                        data: chartData.series[2].data,
+                        yAxis: 2,
+                        color: '#38a169',
+                        marker: { radius: 3 }
+                    },
+                    {
+                        name: 'Sel (g/L)',
+                        data: chartData.series[3].data,
+                        yAxis: 3,
+                        color: '#d69e2e',
+                        marker: { radius: 3 }
+                    }
+                ],
+                legend: {
+                    enabled: true,
+                    align: 'center'
+                },
+                tooltip: {
+                    shared: true,
+                    crosshairs: true
+                },
+                plotOptions: {
+                    line: {
+                        marker: {
+                            enabled: true,
+                            radius: 2
+                        },
+                        lineWidth: 2
+                    }
+                },
+                credits: { enabled: false }
+            });
+        }
+
+        function updatePeriod(hours) {
+            currentPeriod = hours;
+            
+            // Update button styles
+            document.querySelectorAll('.controls button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.period == hours) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            updateChart();
+            updateCurrentValues();
+        }
+
+        // Initial load
+        updateCurrentValues();
+        updateChart();
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            updateCurrentValues();
+            updateChart();
+        }, 30000);
+    </script>
+</body>
+</html>
