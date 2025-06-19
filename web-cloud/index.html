@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pool Monitor - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏊</text></svg>">
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <meta name="description" content="Dashboard de monitoring en temps réel pour piscine avec régulateur CORELEC">
+    <meta name="keywords" content="piscine, monitoring, pH, redox, température, sel, dashboard">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-swimming-pool"></i> Pool Monitor</h1>
+            <div class="status-indicator">
+                <span id="connection-status" class="status offline">
+                    <i class="fas fa-circle"></i> Connexion...
+                </span>
+                <span id="last-update">Chargement...</span>
+            </div>
+        </header>
+
+        <!-- Panneau de contrôle avec valeurs actuelles -->
+        <section class="dashboard-cards">
+            <div class="card ph-card">
+                <div class="card-header">
+                    <i class="fas fa-tint"></i>
+                    <h3>pH</h3>
+                </div>
+                <div class="card-value">
+                    <span id="current-ph" class="loading">--</span>
+                </div>
+                <div class="card-status" id="ph-status">Chargement...</div>
+            </div>
+
+            <div class="card temperature-card">
+                <div class="card-header">
+                    <i class="fas fa-thermometer-half"></i>
+                    <h3>Température</h3>
+                </div>
+                <div class="card-value">
+                    <span id="current-temperature" class="loading">--</span>
+                    <span class="unit">°C</span>
+                </div>
+                <div class="card-status" id="temperature-status">Chargement...</div>
+            </div>
+
+            <div class="card redox-card">
+                <div class="card-header">
+                    <i class="fas fa-bolt"></i>
+                    <h3>Redox</h3>
+                </div>
+                <div class="card-value">
+                    <span id="current-redox" class="loading">--</span>
+                    <span class="unit">mV</span>
+                </div>
+                <div class="card-status" id="redox-status">Chargement...</div>
+            </div>
+
+            <div class="card salt-card">
+                <div class="card-header">
+                    <i class="fas fa-cube"></i>
+                    <h3>Sel</h3>
+                </div>
+                <div class="card-value">
+                    <span id="current-salt" class="loading">--</span>
+                    <span class="unit">g/L</span>
+                </div>
+                <div class="card-status" id="salt-status">Chargement...</div>
+            </div>
+        </section>
+
+        <!-- Alertes et état des pompes -->
+        <section class="alerts-section">
+            <div class="alerts-container">
+                <h3><i class="fas fa-exclamation-triangle"></i> Alertes</h3>
+                <div id="alerts-list" class="alerts-list">
+                    <div class="alert-item info">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Chargement des données...
+                    </div>
+                </div>
+            </div>
+
+            <div class="pumps-container">
+                <h3><i class="fas fa-cogs"></i> État des pompes</h3>
+                <div class="pumps-status">
+                    <div class="pump-item">
+                        <span>pH+</span>
+                        <div id="pump-plus" class="pump-indicator off">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                    </div>
+                    <div class="pump-item">
+                        <span>pH-</span>
+                        <div id="pump-minus" class="pump-indicator off">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                    </div>
+                    <div class="pump-item">
+                        <span>Chlore</span>
+                        <div id="pump-chlore" class="pump-indicator off">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                    </div>
+                    <div class="pump-item">
+                        <span>Filtration</span>
+                        <div id="filter-relay" class="pump-indicator off">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contrôles des graphiques -->
+        <section class="chart-controls">
+            <div class="controls-group">
+                <label for="time-range">Période:</label>
+                <select id="time-range">
+                    <option value="24">24 heures</option>
+                    <option value="48">48 heures</option>
+                    <option value="168">7 jours</option>
+                    <option value="720">30 jours</option>
+                </select>
+            </div>
+            <div class="controls-group">
+                <label for="chart-interval">Intervalle:</label>
+                <select id="chart-interval">
+                    <option value="minute">Minute</option>
+                    <option value="hour" selected>Heure</option>
+                    <option value="day">Jour</option>
+                </select>
+            </div>
+            <button id="refresh-charts" class="btn-refresh">
+                <i class="fas fa-sync-alt"></i> Actualiser
+            </button>
+        </section>
+
+        <!-- Graphiques -->
+        <section class="charts-section">
+            <div class="chart-container">
+                <h4>pH</h4>
+                <div id="ph-chart" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <h4>Température</h4>
+                <div id="temperature-chart" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <h4>Redox</h4>
+                <div id="redox-chart" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <h4>Sel</h4>
+                <div id="salt-chart" class="chart"></div>
+            </div>
+        </section>
+
+        <!-- Statistiques -->
+        <section class="stats-section">
+            <h3><i class="fas fa-chart-bar"></i> Statistiques (24h)</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h4>pH</h4>
+                    <div class="stat-values">
+                        <span>Min: <span id="ph-min" class="loading">--</span></span>
+                        <span>Moy: <span id="ph-avg" class="loading">--</span></span>
+                        <span>Max: <span id="ph-max" class="loading">--</span></span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <h4>Température</h4>
+                    <div class="stat-values">
+                        <span>Min: <span id="temp-min" class="loading">--</span>°C</span>
+                        <span>Moy: <span id="temp-avg" class="loading">--</span>°C</span>
+                        <span>Max: <span id="temp-max" class="loading">--</span>°C</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <h4>Redox</h4>
+                    <div class="stat-values">
+                        <span>Min: <span id="redox-min" class="loading">--</span>mV</span>
+                        <span>Moy: <span id="redox-avg" class="loading">--</span>mV</span>
+                        <span>Max: <span id="redox-max" class="loading">--</span>mV</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <h4>Sel</h4>
+                    <div class="stat-values">
+                        <span>Min: <span id="salt-min" class="loading">--</span>g/L</span>
+                        <span>Moy: <span id="salt-avg" class="loading">--</span>g/L</span>
+                        <span>Max: <span id="salt-max" class="loading">--</span>g/L</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Pool Monitor - Système de surveillance de piscine CORELEC</p>
+            <p><i class="fas fa-clock"></i> Mis à jour automatiquement toutes les 30 secondes</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+    
+    <!-- Service Worker pour le cache -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(console.error);
+        }
+    </script>
+</body>
+</html>
