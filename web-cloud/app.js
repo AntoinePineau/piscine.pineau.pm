@@ -11,7 +11,8 @@ const CHART_COLORS = {
 // Variables globales
 let updateTimer;
 let charts = {};
-let isOnline = navigator.onLine;
+let apiStatus = 'loading'; // 'loading', 'ok', 'error'
+let lastSuccessfulUpdate = null;
 
 // Configuration auto de l'API selon l'environnement
 function getApiUrl() {
@@ -53,16 +54,15 @@ async function initializeApp() {
 }
 
 function setupNetworkListeners() {
+    // Surveillance de la connexion internet basique
     window.addEventListener('online', () => {
-        isOnline = true;
-        console.log('Connexion rétablie');
+        console.log('Connexion internet rétablie');
         loadInitialData();
     });
     
     window.addEventListener('offline', () => {
-        isOnline = false;
-        console.log('Connexion perdue');
-        updateConnectionStatus(false);
+        console.log('Connexion internet perdue');
+        updateApiStatus('error', 'Pas de connexion internet');
     });
 }
 
@@ -91,10 +91,7 @@ function setupEventListeners() {
 }
 
 async function loadInitialData() {
-    if (!isOnline) {
-        updateConnectionStatus(false);
-        return;
-    }
+    updateApiStatus('loading', 'Chargement des données...');
     
     try {
         // Chargement en parallèle
@@ -103,9 +100,10 @@ async function loadInitialData() {
             loadStats(),
             loadChartData()
         ]);
+        updateApiStatus('ok', 'API fonctionnelle');
     } catch (error) {
         console.error('Erreur lors du chargement initial:', error);
-        updateConnectionStatus(false);
+        updateApiStatus('error', 'Problème API');
     }
 }
 
@@ -157,15 +155,17 @@ async function loadLatestData() {
         
         if (result.success && result.data) {
             updateCurrentValues(result.data);
-            updateConnectionStatus(true);
             updateLastUpdateTime(result.data.timestamp);
             removeLoadingStates();
+            lastSuccessfulUpdate = new Date();
+            updateApiStatus('ok', 'API fonctionnelle');
         } else {
-            updateConnectionStatus(false);
+            throw new Error('Réponse API invalide');
         }
     } catch (error) {
         console.error('Erreur lors du chargement des dernières données:', error);
-        updateConnectionStatus(false);
+        updateApiStatus('error', 'Impossible de récupérer les données');
+        throw error;
     }
 }
 
@@ -338,15 +338,25 @@ function updateAlerts(data) {
     });
 }
 
-// Mise à jour du statut de connexion
-function updateConnectionStatus(isOnline) {
-    const statusElement = document.getElementById('connection-status');
-    if (isOnline) {
-        statusElement.className = 'status online';
-        statusElement.innerHTML = '<i class="fas fa-circle"></i> En ligne';
-    } else {
-        statusElement.className = 'status offline';
-        statusElement.innerHTML = '<i class="fas fa-circle"></i> Hors ligne';
+// Mise à jour du statut de l'API
+function updateApiStatus(status, message) {
+    const statusElement = document.getElementById('api-status');
+    apiStatus = status;
+    
+    switch (status) {
+        case 'ok':
+            statusElement.className = 'status api-ok';
+            statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Données à jour';
+            break;
+        case 'error':
+            statusElement.className = 'status api-error';
+            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + (message || 'Problème API');
+            break;
+        case 'loading':
+        default:
+            statusElement.className = 'status api-loading';
+            statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (message || 'Chargement...');
+            break;
     }
 }
 
@@ -638,9 +648,12 @@ function updateCharts(chartData, interval = 'hour') {
 // Démarrage des mises à jour automatiques
 function startAutoUpdate() {
     updateTimer = setInterval(async () => {
-        if (isOnline) {
+        try {
             await loadLatestData();
             await loadStats();
+        } catch (error) {
+            // L'erreur est déjà gérée dans loadLatestData
+            console.log('Mise à jour automatique échouée, nouvelle tentative dans', UPDATE_INTERVAL/1000, 'secondes');
         }
     }, UPDATE_INTERVAL);
 }
@@ -659,10 +672,12 @@ document.addEventListener('visibilitychange', function() {
         stopAutoUpdate();
     } else {
         startAutoUpdate();
-        if (isOnline) {
-            loadLatestData();
-            loadStats();
-        }
+        loadLatestData().catch(error => {
+            console.log('Rechargement lors du retour sur l\'onglet échoué');
+        });
+        loadStats().catch(error => {
+            console.log('Rechargement des stats lors du retour sur l\'onglet échoué');
+        });
     }
 });
 
