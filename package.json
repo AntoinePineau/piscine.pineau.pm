@@ -4,5 +4,7 @@
     "build": "echo 'No build needed - using static files from web-cloud'",
     "start": "echo 'Static files served by Vercel'"
   },
-  "dependencies": {}
+  "dependencies": {
+    "pg": "^8.11.0"
+  }
 }

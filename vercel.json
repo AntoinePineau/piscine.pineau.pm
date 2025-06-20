@@ -3,5 +3,28 @@
   "buildCommand": "echo 'No build needed - using static files'",
   "outputDirectory": "web-cloud",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/measurements/latest",
+      "destination": "/api/latest"
+    },
+    {
+      "source": "/api/measurements/stats",
+      "destination": "/api/stats"
+    },
+    {
+      "source": "/api/measurements/chart-data",
+      "destination": "/api/chart-data"
+    },
+    {
+      "source": "/api/measurements",
+      "destination": "/api/measurements"
+    }
+  ]
 }
