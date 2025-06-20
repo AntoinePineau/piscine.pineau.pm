@@ -4,9 +4,6 @@
     "build": "echo 'No build needed - using static files from web-cloud'",
     "start": "echo 'Static files served by Vercel'"
   },
-  "engines": {
-    "node": "18.x"
-  },
   "devDependencies": {},
   "dependencies": {}
 }
