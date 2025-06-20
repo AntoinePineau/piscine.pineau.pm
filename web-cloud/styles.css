@@ -1,17 +1,23 @@
-/* Variables CSS */
+/* Variables CSS - Thème Piscine Bleue */
 :root {
-    --primary-color: #2196F3;
-    --secondary-color: #FFC107;
-    --success-color: #4CAF50;
-    --warning-color: #FF9800;
-    --error-color: #F44336;
-    --background-color: #f5f5f5;
+    --primary-color: #0288D1; /* Bleu piscine principal */
+    --primary-light: #4FC3F7; /* Bleu clair */
+    --primary-dark: #0277BD; /* Bleu foncé */
+    --secondary-color: #00ACC1; /* Turquoise */
+    --accent-color: #26C6DA; /* Cyan */
+    --success-color: #00C851; /* Vert aqua */
+    --warning-color: #FF8F00; /* Orange soleil */
+    --error-color: #FF3D00; /* Rouge corail */
+    --background-color: #E3F2FD; /* Bleu très clair */
     --card-background: #ffffff;
-    --text-color: #333333;
-    --text-secondary: #666666;
-    --border-color: #e0e0e0;
-    --shadow: 0 2px 8px rgba(0,0,0,0.1);
-    --border-radius: 8px;
+    --text-color: #0D47A1; /* Bleu marine */
+    --text-secondary: #1565C0; /* Bleu moyen */
+    --border-color: #BBDEFB; /* Bleu pastel */
+    --shadow: 0 4px 12px rgba(2, 136, 209, 0.15);
+    --shadow-hover: 0 8px 24px rgba(2, 136, 209, 0.25);
+    --border-radius: 12px;
+    --pool-gradient: linear-gradient(135deg, #0288D1, #00ACC1, #26C6DA);
+    --water-gradient: linear-gradient(180deg, #E3F2FD, #BBDEFB);
 }
 
 /* Reset et base */
@@ -23,9 +29,10 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--background-color);
+    background: var(--water-gradient);
     color: var(--text-color);
     line-height: 1.6;
+    min-height: 100vh;
 }
 
 .container {
@@ -36,7 +43,7 @@ body {
 
 /* Header */
 .header {
-    background: linear-gradient(135deg, var(--primary-color), #1976D2);
+    background: var(--pool-gradient);
     color: white;
     padding: 20px;
     border-radius: var(--border-radius);
@@ -45,6 +52,25 @@ body {
     justify-content: space-between;
     align-items: center;
     box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><path d="M0 10 Q25 0 50 10 T100 10 V20 H0 Z" fill="rgba(255,255,255,0.1)"/></svg>') repeat-x;
+    background-size: 100px 20px;
+    animation: wave 3s ease-in-out infinite;
+}
+
+@keyframes wave {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-50px); }
 }
 
 .header h1 {
@@ -114,7 +140,7 @@ body {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    background: var(--pool-gradient);
 }
 
 .card-header {
@@ -156,18 +182,18 @@ body {
     transition: all 0.3s ease;
 }
 
-/* Couleurs spécifiques aux cartes */
-.ph-card .card-header i { color: #9C27B0; }
-.ph-card .card-value { color: #9C27B0; }
+/* Couleurs spécifiques aux cartes - Thème piscine */
+.ph-card .card-header i { color: var(--primary-color); }
+.ph-card .card-value { color: var(--primary-color); }
 
-.temperature-card .card-header i { color: #FF5722; }
-.temperature-card .card-value { color: #FF5722; }
+.temperature-card .card-header i { color: var(--warning-color); }
+.temperature-card .card-value { color: var(--warning-color); }
 
-.redox-card .card-header i { color: #FF9800; }
-.redox-card .card-value { color: #FF9800; }
+.redox-card .card-header i { color: var(--secondary-color); }
+.redox-card .card-value { color: var(--secondary-color); }
 
-.salt-card .card-header i { color: #607D8B; }
-.salt-card .card-value { color: #607D8B; }
+.salt-card .card-header i { color: var(--accent-color); }
+.salt-card .card-value { color: var(--accent-color); }
 
 /* États des statuts */
 .status-optimal { 
@@ -292,11 +318,15 @@ body {
     border-radius: var(--border-radius);
     padding: 20px;
     margin-bottom: 30px;
+    box-shadow: var(--shadow);
+}
+
+.chart-controls > div:first-child {
     display: flex;
     gap: 20px;
     align-items: center;
-    box-shadow: var(--shadow);
     flex-wrap: wrap;
+    margin-bottom: 15px;
 }
 
 .controls-group {
@@ -320,10 +350,21 @@ body {
     transition: all 0.3s ease;
 }
 
-.controls-group select:focus {
+.controls-group select:focus,
+.controls-group input:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.controls-group input {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: white;
+    font-size: 0.9rem;
+    width: 80px;
+    transition: all 0.3s ease;
 }
 
 .btn-refresh {
@@ -349,6 +390,62 @@ body {
 .btn-refresh:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* Contrôles personnalisés */
+.custom-range-group {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.btn-apply-custom {
+    background: var(--success-color);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.btn-apply-custom:hover {
+    background: #45a049;
+    transform: translateY(-1px);
+}
+
+/* Informations sur les données */
+.data-info {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    background: rgba(33, 150, 243, 0.05);
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(33, 150, 243, 0.1);
+}
+
+.info-item i {
+    color: var(--primary-color);
 }
 
 /* Graphiques */
@@ -477,7 +574,17 @@ body {
     animation: fadeIn 0.5s ease-out;
 }
 
-/* Responsive */
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .dashboard-cards {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 10px;
@@ -487,6 +594,7 @@ body {
         flex-direction: column;
         text-align: center;
         gap: 10px;
+        padding: 15px;
     }
     
     .header h1 {
@@ -495,19 +603,23 @@ body {
     
     .dashboard-cards {
         grid-template-columns: 1fr;
+        gap: 15px;
     }
     
     .alerts-section {
         grid-template-columns: 1fr;
+        gap: 15px;
     }
     
     .charts-section {
         grid-template-columns: 1fr;
+        gap: 15px;
     }
     
-    .chart-controls {
+    .chart-controls > div:first-child {
         flex-direction: column;
         gap: 15px;
+        align-items: stretch;
     }
     
     .controls-group {
@@ -515,8 +627,28 @@ body {
         justify-content: space-between;
     }
     
+    .controls-group label {
+        min-width: 80px;
+    }
+    
+    .controls-group select,
+    .controls-group input {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .data-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .info-item {
+        justify-content: center;
+    }
+    
     .pumps-status {
         grid-template-columns: 1fr;
+        gap: 10px;
     }
     
     .stat-values {
@@ -527,6 +659,10 @@ body {
     .card-value {
         font-size: 2rem;
     }
+    
+    .chart {
+        height: 400px; /* Graphiques plus grands sur tablette */
+    }
 }
 
 @media (max-width: 480px) {
@@ -535,7 +671,11 @@ body {
     }
     
     .header {
-        padding: 15px;
+        padding: 12px;
+    }
+    
+    .header h1 {
+        font-size: 1.3rem;
     }
     
     .card {
@@ -546,8 +686,103 @@ body {
         font-size: 1.8rem;
     }
     
-    .charts-section .chart {
-        height: 250px;
+    .chart-controls {
+        padding: 15px;
+    }
+    
+    .controls-group {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+    
+    .controls-group label {
+        min-width: auto;
+        text-align: left;
+        font-weight: 600;
+    }
+    
+    .btn-refresh {
+        width: 100%;
+        justify-content: center;
+        margin-top: 10px;
+    }
+    
+    .btn-apply-custom {
+        margin-left: 0;
+        margin-top: 8px;
+        width: 100%;
+    }
+    
+    .chart {
+        height: 450px !important; /* Graphiques beaucoup plus grands sur mobile */
+        margin: 10px 0;
+    }
+    
+    .chart-container {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 0;
+        margin-left: -5px;
+        margin-right: -5px;
+    }
+    
+    .dashboard-cards {
+        gap: 12px;
+    }
+    
+    .card-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    .status-indicator {
+        text-align: center;
+    }
+    
+    /* Navigation temporelle mobile */
+    .mobile-time-nav {
+        display: flex;
+        background: var(--card-background);
+        border-radius: var(--border-radius);
+        margin: 10px 0;
+        box-shadow: var(--shadow);
+        overflow-x: auto;
+        padding: 10px;
+        gap: 8px;
+    }
+    
+    .time-quick-btn {
+        flex-shrink: 0;
+        background: var(--primary-light);
+        color: white;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+    }
+    
+    .time-quick-btn.active {
+        background: var(--primary-color);
+        box-shadow: 0 2px 8px rgba(2, 136, 209, 0.4);
+    }
+    
+    .time-quick-btn:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+    
+    /* Masquer certains éléments sur très petit écran pour optimiser l'espace */
+    .data-info {
+        display: none;
+    }
+    
+    /* Graphiques en plein écran sur mobile */
+    .charts-section {
+        margin: 0 -5px;
     }
 }
 

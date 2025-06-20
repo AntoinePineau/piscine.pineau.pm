@@ -2,10 +2,10 @@
 const API_BASE_URL = 'https://pool-monitor-api.vercel.app/api'; // URL de votre API Vercel
 const UPDATE_INTERVAL = 30000; // 30 secondes
 const CHART_COLORS = {
-    ph: '#9C27B0',
-    temperature: '#FF5722', 
-    redox: '#FF9800',
-    salt: '#607D8B'
+    ph: '#0288D1',        // Bleu piscine principal
+    temperature: '#FF8F00', // Orange soleil
+    redox: '#00ACC1',     // Turquoise
+    salt: '#26C6DA'       // Cyan
 };
 
 // Variables globales
@@ -40,6 +40,9 @@ async function initializeApp() {
     // Configuration des événements
     setupEventListeners();
     
+    // Initialisation des informations d'affichage
+    updateDataFrequencyInfo(document.getElementById('chart-interval').value);
+    
     // Chargement initial des données
     await loadInitialData();
     
@@ -65,11 +68,26 @@ function setupNetworkListeners() {
 
 function setupEventListeners() {
     // Contrôles des graphiques
-    document.getElementById('time-range').addEventListener('change', loadChartData);
-    document.getElementById('chart-interval').addEventListener('change', loadChartData);
+    document.getElementById('time-range').addEventListener('change', handleTimeRangeChange);
+    document.getElementById('chart-interval').addEventListener('change', handleIntervalChange);
     document.getElementById('refresh-charts').addEventListener('click', () => {
         refreshAllData();
     });
+    
+    // Contrôles personnalisés
+    document.querySelector('.btn-apply-custom').addEventListener('click', applyCustomRange);
+    document.getElementById('custom-hours').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            applyCustomRange();
+        }
+    });
+    
+    // Navigation mobile
+    setupMobileNavigation();
+    
+    // Gérer l'affichage mobile vs desktop
+    handleResponsiveDisplay();
+    window.addEventListener('resize', handleResponsiveDisplay);
 }
 
 async function loadInitialData() {
@@ -375,24 +393,95 @@ function updateStatsDisplay(stats) {
     document.getElementById('salt-max').textContent = stats.max_salt ? parseFloat(stats.max_salt).toFixed(1) : '--';
 }
 
+// Gestion du changement de période
+function handleTimeRangeChange() {
+    const timeRange = document.getElementById('time-range').value;
+    const customGroup = document.getElementById('custom-range-group');
+    
+    if (timeRange === 'custom') {
+        customGroup.style.display = 'block';
+    } else {
+        customGroup.style.display = 'none';
+        loadChartData();
+    }
+}
+
+// Gestion du changement d'intervalle
+function handleIntervalChange() {
+    const interval = document.getElementById('chart-interval').value;
+    updateDataFrequencyInfo(interval);
+    loadChartData();
+}
+
+// Application de la période personnalisée
+function applyCustomRange() {
+    const customHours = document.getElementById('custom-hours').value;
+    if (customHours && customHours > 0) {
+        loadChartData();
+    }
+}
+
+// Mise à jour des informations sur la fréquence
+function updateDataFrequencyInfo(interval) {
+    const dataFrequencyElement = document.getElementById('data-frequency');
+    const frequencyMap = {
+        '5min': 'Fréquence: 5 minutes',
+        '15min': 'Fréquence: 15 minutes', 
+        '30min': 'Fréquence: 30 minutes',
+        'hour': 'Fréquence: 1 heure',
+        'day': 'Fréquence: 1 jour'
+    };
+    
+    dataFrequencyElement.textContent = frequencyMap[interval] || 'Fréquence: 5 minutes';
+}
+
 // Chargement des données pour les graphiques
 async function loadChartData() {
     try {
-        const hours = document.getElementById('time-range').value;
+        const timeRangeValue = document.getElementById('time-range').value;
         const interval = document.getElementById('chart-interval').value;
         
-        const result = await apiCall(`/measurements/chart-data?hours=${hours}&interval=${interval}`);
+        let hours;
+        if (timeRangeValue === 'custom') {
+            hours = document.getElementById('custom-hours').value;
+        } else {
+            hours = timeRangeValue;
+        }
+        
+        // Conversion des nouveaux intervalles pour l'API
+        const intervalMap = {
+            '5min': 'minute',
+            '15min': 'minute', 
+            '30min': 'minute',
+            'hour': 'hour',
+            'day': 'day'
+        };
+        
+        const apiInterval = intervalMap[interval] || 'hour';
+        
+        const result = await apiCall(`/measurements/chart-data?hours=${hours}&interval=${apiInterval}`);
         
         if (result.success && result.data) {
-            updateCharts(result.data);
+            updateCharts(result.data, interval);
+            updateDataPointsInfo(result.data);
         }
     } catch (error) {
         console.error('Erreur lors du chargement des données graphiques:', error);
     }
 }
 
+// Mise à jour du nombre de points de données
+function updateDataPointsInfo(chartData) {
+    const dataPointsElement = document.getElementById('data-points');
+    if (chartData && chartData.categories) {
+        dataPointsElement.textContent = `Points de données: ${chartData.categories.length}`;
+    } else {
+        dataPointsElement.textContent = 'Points de données: --';
+    }
+}
+
 // Mise à jour des graphiques
-function updateCharts(chartData) {
+function updateCharts(chartData, interval = 'hour') {
     // Configuration commune pour tous les graphiques
     const commonConfig = {
         chart: {
@@ -412,10 +501,11 @@ function updateCharts(chartData) {
         xAxis: {
             categories: chartData.categories,
             labels: {
-                rotation: -45,
+                rotation: getRotationForInterval(interval),
                 style: {
                     fontSize: '11px'
-                }
+                },
+                step: getStepForInterval(interval, chartData.categories.length)
             }
         },
         plotOptions: {
@@ -454,10 +544,10 @@ function updateCharts(chartData) {
                 plotBands: [{
                     from: 7.0,
                     to: 7.4,
-                    color: 'rgba(76, 175, 80, 0.1)',
+                    color: 'rgba(2, 136, 209, 0.1)',
                     label: {
                         text: 'Zone optimale',
-                        style: { color: '#4CAF50', fontSize: '10px' }
+                        style: { color: '#0288D1', fontSize: '10px' }
                     }
                 }]
             },
@@ -479,10 +569,10 @@ function updateCharts(chartData) {
                 plotBands: [{
                     from: 18,
                     to: 28,
-                    color: 'rgba(255, 87, 34, 0.1)',
+                    color: 'rgba(255, 143, 0, 0.1)',
                     label: {
                         text: 'Zone optimale',
-                        style: { color: '#FF5722', fontSize: '10px' }
+                        style: { color: '#FF8F00', fontSize: '10px' }
                     }
                 }]
             },
@@ -504,10 +594,10 @@ function updateCharts(chartData) {
                 plotBands: [{
                     from: 650,
                     to: 750,
-                    color: 'rgba(255, 152, 0, 0.1)',
+                    color: 'rgba(0, 172, 193, 0.1)',
                     label: {
                         text: 'Zone optimale',
-                        style: { color: '#FF9800', fontSize: '10px' }
+                        style: { color: '#00ACC1', fontSize: '10px' }
                     }
                 }]
             },
@@ -529,10 +619,10 @@ function updateCharts(chartData) {
                 plotBands: [{
                     from: 3.0,
                     to: 5.0,
-                    color: 'rgba(96, 125, 139, 0.1)',
+                    color: 'rgba(38, 198, 218, 0.1)',
                     label: {
                         text: 'Zone optimale',
-                        style: { color: '#607D8B', fontSize: '10px' }
+                        style: { color: '#26C6DA', fontSize: '10px' }
                     }
                 }]
             },
@@ -576,16 +666,91 @@ document.addEventListener('visibilitychange', function() {
     }
 });
 
-// Fonction utilitaire pour formater les dates
+// Fonctions utilitaires pour l'affichage des graphiques
+function getRotationForInterval(interval) {
+    const rotationMap = {
+        '5min': -90,
+        '15min': -45,
+        '30min': -45,
+        'hour': -45,
+        'day': 0
+    };
+    return rotationMap[interval] || -45;
+}
+
+function getStepForInterval(interval, dataLength) {
+    if (interval === '5min' && dataLength > 100) {
+        return Math.ceil(dataLength / 50); // Afficher 1 label sur 50 max
+    }
+    if (interval === '15min' && dataLength > 50) {
+        return Math.ceil(dataLength / 25); // Afficher 1 label sur 25 max
+    }
+    if (interval === '30min' && dataLength > 30) {
+        return Math.ceil(dataLength / 15); // Afficher 1 label sur 15 max
+    }
+    return 1; // Afficher tous les labels pour les autres cas
+}
+
+// Fonction utilitaire pour formater les dates avec fuseau horaire CEST
 function formatDate(dateString) {
     const date = new Date(dateString);
+    // Convertir l'heure UTC vers CEST (GMT+2)
     return date.toLocaleString('fr-FR', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Europe/Paris' // CEST/CET selon la saison
     });
+}
+
+// Navigation mobile
+function setupMobileNavigation() {
+    const mobileNav = document.querySelector('.mobile-time-nav');
+    const quickBtns = mobileNav.querySelectorAll('.time-quick-btn');
+    
+    quickBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Retirer la classe active de tous les boutons
+            quickBtns.forEach(b => b.classList.remove('active'));
+            // Ajouter la classe active au bouton cliqué
+            btn.classList.add('active');
+            
+            // Appliquer les paramètres
+            const hours = btn.dataset.hours;
+            const interval = btn.dataset.interval;
+            
+            // Mettre à jour les contrôles principaux
+            document.getElementById('time-range').value = hours;
+            document.getElementById('chart-interval').value = interval;
+            
+            // Recharger les données
+            updateDataFrequencyInfo(interval);
+            loadChartData();
+        });
+    });
+}
+
+// Gestion responsive
+function handleResponsiveDisplay() {
+    const mobileNav = document.querySelector('.mobile-time-nav');
+    const regularControls = document.querySelector('.chart-controls');
+    
+    if (window.innerWidth <= 768) {
+        mobileNav.style.display = 'flex';
+        regularControls.style.display = 'none';
+    } else {
+        mobileNav.style.display = 'none';
+        regularControls.style.display = 'block';
+    }
+}
+
+// Fonction pour convertir UTC vers heure locale (CEST)
+function convertToLocalTime(utcDateString) {
+    const utcDate = new Date(utcDateString);
+    // Créer une date en heure locale (navigateur gère automatiquement CEST/CET)
+    return new Date(utcDate.getTime());
 }
 
 // Gestion des erreurs globales
