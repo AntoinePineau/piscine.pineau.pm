@@ -805,15 +805,15 @@ function convertToLocalTime(utcDateString) {
 
 // Initialisation des paramètres par défaut selon l'écran
 function initializeDefaultSettings() {
-    // Si desktop (> 768px), on garde les valeurs HTML par défaut (12h / 5min)
+    // Si desktop (> 768px), on garde les valeurs HTML par défaut (12h / 30min)
     // Si mobile, on ajuste pour de meilleures performances
     if (window.innerWidth <= 768) {
-        // Sur mobile, on préfère des intervalles moins détaillés pour les performances
+        // Sur mobile, on préfère des périodes plus courtes
         document.getElementById('time-range').value = '4';
-        document.getElementById('chart-interval').value = '15min';
-        updateDataFrequencyInfo('15min');
+        document.getElementById('chart-interval').value = '30min';
+        updateDataFrequencyInfo('30min');
     }
-    // Sinon on garde les valeurs par défaut HTML (12h / 5min pour desktop)
+    // Sinon on garde les valeurs par défaut HTML (12h / 30min pour desktop)
 }
 
 // Gestion des erreurs globales
