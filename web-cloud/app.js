@@ -180,37 +180,43 @@ function removeLoadingStates() {
 
 // Mise à jour des valeurs actuelles
 function updateCurrentValues(data) {
+    // Conversion des données en nombres (au cas où elles viennent comme strings de la DB)
+    const ph = parseFloat(data.ph);
+    const temperature = parseFloat(data.temperature);
+    const redox = parseFloat(data.redox);
+    const salt = parseFloat(data.salt);
+    
     // pH
-    const phValue = parseFloat(data.ph).toFixed(2);
+    const phValue = ph.toFixed(2);
     const phElement = document.getElementById('current-ph');
     phElement.textContent = phValue;
-    phElement.className = `${getPhStatusClass(data.ph).replace('status-', '')}`;
-    document.getElementById('ph-status').textContent = getPhStatusShort(data.ph);
-    document.getElementById('ph-status').className = `card-status ${getPhStatusClass(data.ph)}`;
+    phElement.className = `${getPhStatusClass(ph).replace('status-', '')}`;
+    document.getElementById('ph-status').textContent = getPhStatusShort(ph);
+    document.getElementById('ph-status').className = `card-status ${getPhStatusClass(ph)}`;
     
     // Température
-    const tempValue = parseFloat(data.temperature).toFixed(1);
+    const tempValue = temperature.toFixed(1);
     const tempElement = document.getElementById('current-temperature');
     tempElement.textContent = tempValue;
-    tempElement.className = `${getTemperatureStatusClass(data.temperature).replace('status-', '')}`;
-    document.getElementById('temperature-status').textContent = getTemperatureStatusShort(data.temperature);
-    document.getElementById('temperature-status').className = `card-status ${getTemperatureStatusClass(data.temperature)}`;
+    tempElement.className = `${getTemperatureStatusClass(temperature).replace('status-', '')}`;
+    document.getElementById('temperature-status').textContent = getTemperatureStatusShort(temperature);
+    document.getElementById('temperature-status').className = `card-status ${getTemperatureStatusClass(temperature)}`;
     
     // Redox
-    const redoxValue = Math.round(data.redox);
+    const redoxValue = Math.round(redox);
     const redoxElement = document.getElementById('current-redox');
     redoxElement.textContent = redoxValue;
-    redoxElement.className = `${getRedoxStatusClass(data.redox).replace('status-', '')}`;
-    document.getElementById('redox-status').textContent = getRedoxStatusShort(data.redox);
-    document.getElementById('redox-status').className = `card-status ${getRedoxStatusClass(data.redox)}`;
+    redoxElement.className = `${getRedoxStatusClass(redox).replace('status-', '')}`;
+    document.getElementById('redox-status').textContent = getRedoxStatusShort(redox);
+    document.getElementById('redox-status').className = `card-status ${getRedoxStatusClass(redox)}`;
     
     // Sel
-    const saltValue = parseFloat(data.salt).toFixed(1);
+    const saltValue = salt.toFixed(1);
     const saltElement = document.getElementById('current-salt');
     saltElement.textContent = saltValue;
-    saltElement.className = `${getSaltStatusClass(data.salt).replace('status-', '')}`;
-    document.getElementById('salt-status').textContent = getSaltStatusShort(data.salt);
-    document.getElementById('salt-status').className = `card-status ${getSaltStatusClass(data.salt)}`;
+    saltElement.className = `${getSaltStatusClass(salt).replace('status-', '')}`;
+    document.getElementById('salt-status').textContent = getSaltStatusShort(salt);
+    document.getElementById('salt-status').className = `card-status ${getSaltStatusClass(salt)}`;
     
     // État des pompes
     updatePumpStatus('pump-plus', data.pump_plus_active);
@@ -218,8 +224,8 @@ function updateCurrentValues(data) {
     updatePumpStatus('pump-chlore', data.pump_chlore_active);
     updatePumpStatus('filter-relay', data.filter_relay_active);
     
-    // Alertes
-    updateAlerts(data);
+    // Alertes (avec les valeurs converties)
+    updateAlerts({...data, ph, temperature, redox, salt});
 }
 
 // Fonctions de statut pour pH
@@ -541,6 +547,9 @@ function updateCharts(chartData, interval = 'hour') {
             enabled: false
         },
         legend: {
+            enabled: false
+        },
+        accessibility: {
             enabled: false
         },
         xAxis: {
