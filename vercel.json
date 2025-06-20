@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "buildCommand": "echo 'No build needed - using static files'",
+  "outputDirectory": "web-cloud",
+  "functions": {
+    "api-cloud/api/index.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api-cloud/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/web-cloud/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    }
+  ]
+}
