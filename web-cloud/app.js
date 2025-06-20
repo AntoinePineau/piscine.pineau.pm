@@ -6,7 +6,7 @@ const API_URLS = [
     'https://regulapp-api.vercel.app/api'
 ];
 const API_BASE_URL = API_URLS[0]; // Commencer par la première
-const UPDATE_INTERVAL = 30000; // 30 secondes
+const UPDATE_INTERVAL = 120000; // 2 minutes (plus fréquent que les 5 min du RPi pour éviter d'attendre)
 const CHART_COLORS = {
     ph: '#0288D1',        // Bleu piscine principal
     temperature: '#FF8F00', // Orange soleil
