@@ -192,12 +192,18 @@ body {
 }
 
 .card-status {
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 0.8rem;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 0.7rem;
     text-align: center;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Couleurs spécifiques aux cartes - Thème piscine */
@@ -213,21 +219,32 @@ body {
 .salt-card .card-header i { color: var(--accent-color); }
 .salt-card .card-value { color: var(--accent-color); }
 
-/* États des statuts */
+/* États des statuts - Plus discrets mais efficaces */
 .status-optimal { 
-    background-color: var(--success-color); 
-    color: white;
-    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+    background-color: rgba(0, 200, 81, 0.15);
+    color: var(--success-color);
+    border: 1px solid rgba(0, 200, 81, 0.3);
 }
 .status-warning { 
-    background-color: var(--warning-color); 
-    color: white;
-    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+    background-color: rgba(255, 143, 0, 0.15);
+    color: var(--warning-color);
+    border: 1px solid rgba(255, 143, 0, 0.3);
 }
 .status-danger { 
-    background-color: var(--error-color); 
-    color: white;
-    box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+    background-color: rgba(255, 61, 0, 0.15);
+    color: var(--error-color);
+    border: 1px solid rgba(255, 61, 0, 0.3);
+}
+
+/* Indicateur visuel sur la valeur principale */
+.card-value.optimal {
+    text-shadow: 0 0 10px rgba(0, 200, 81, 0.3);
+}
+.card-value.warning {
+    text-shadow: 0 0 10px rgba(255, 143, 0, 0.3);
+}
+.card-value.danger {
+    text-shadow: 0 0 10px rgba(255, 61, 0, 0.3);
 }
 
 /* Section alertes et pompes */
@@ -341,10 +358,28 @@ body {
 
 .chart-controls > div:first-child {
     display: flex;
-    gap: 20px;
+    gap: 30px;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
     margin-bottom: 15px;
+}
+
+/* Layout desktop optimisé */
+@media (min-width: 769px) {
+    .chart-controls > div:first-child {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 40px;
+    }
+    
+    .controls-group {
+        min-width: 180px;
+    }
+    
+    .btn-refresh {
+        margin-left: auto;
+    }
 }
 
 .controls-group {
@@ -498,60 +533,108 @@ body {
     border-radius: var(--border-radius);
 }
 
-/* Statistiques */
+/* Statistiques - Plus visuelles */
 .stats-section {
     background: var(--card-background);
     border-radius: var(--border-radius);
-    padding: 20px;
+    padding: 25px;
     box-shadow: var(--shadow);
     margin-bottom: 30px;
+    background: linear-gradient(135deg, var(--card-background), #f8fbff);
 }
 
 .stats-section h3 {
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
     gap: 8px;
+    font-size: 1.2rem;
 }
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 20px;
 }
 
 .stat-item {
-    text-align: center;
-    padding: 15px;
-    background: linear-gradient(135deg, #f9f9f9, #f0f0f0);
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(248,251,255,0.9));
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--pool-gradient);
 }
 
 .stat-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(2, 136, 209, 0.15);
+    border-color: var(--primary-light);
 }
 
 .stat-item h4 {
-    margin-bottom: 10px;
-    color: var(--text-secondary);
-    font-weight: 500;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 1rem;
+    text-align: center;
 }
 
 .stat-values {
-    display: flex;
-    justify-content: space-around;
-    font-size: 0.9rem;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    text-align: center;
 }
 
-.stat-values span {
-    font-weight: 500;
-    color: var(--text-color);
+.stat-value {
+    padding: 8px;
+    background: rgba(2, 136, 209, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(2, 136, 209, 0.1);
 }
+
+.stat-value-label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.stat-value-number {
+    display: block;
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* Couleurs spécifiques par paramètre */
+.stat-item:nth-child(1) .stat-value { background: rgba(2, 136, 209, 0.05); border-color: rgba(2, 136, 209, 0.1); }
+.stat-item:nth-child(1) .stat-value-number { color: var(--primary-color); }
+
+.stat-item:nth-child(2) .stat-value { background: rgba(255, 143, 0, 0.05); border-color: rgba(255, 143, 0, 0.1); }
+.stat-item:nth-child(2) .stat-value-number { color: var(--warning-color); }
+
+.stat-item:nth-child(3) .stat-value { background: rgba(0, 172, 193, 0.05); border-color: rgba(0, 172, 193, 0.1); }
+.stat-item:nth-child(3) .stat-value-number { color: var(--secondary-color); }
+
+.stat-item:nth-child(4) .stat-value { background: rgba(38, 198, 218, 0.05); border-color: rgba(38, 198, 218, 0.1); }
+.stat-item:nth-child(4) .stat-value-number { color: var(--accent-color); }
 
 /* Footer */
 .footer {

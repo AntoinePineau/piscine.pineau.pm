@@ -179,26 +179,34 @@ function removeLoadingStates() {
 function updateCurrentValues(data) {
     // pH
     const phValue = parseFloat(data.ph).toFixed(2);
-    document.getElementById('current-ph').textContent = phValue;
-    document.getElementById('ph-status').textContent = getPhStatus(data.ph);
+    const phElement = document.getElementById('current-ph');
+    phElement.textContent = phValue;
+    phElement.className = `card-value ${getPhStatusClass(data.ph).replace('status-', '')}`;
+    document.getElementById('ph-status').textContent = getPhStatusShort(data.ph);
     document.getElementById('ph-status').className = `card-status ${getPhStatusClass(data.ph)}`;
     
     // Température
     const tempValue = parseFloat(data.temperature).toFixed(1);
-    document.getElementById('current-temperature').textContent = tempValue;
-    document.getElementById('temperature-status').textContent = getTemperatureStatus(data.temperature);
+    const tempElement = document.getElementById('current-temperature');
+    tempElement.textContent = tempValue;
+    tempElement.className = `card-value ${getTemperatureStatusClass(data.temperature).replace('status-', '')}`;
+    document.getElementById('temperature-status').textContent = getTemperatureStatusShort(data.temperature);
     document.getElementById('temperature-status').className = `card-status ${getTemperatureStatusClass(data.temperature)}`;
     
     // Redox
     const redoxValue = Math.round(data.redox);
-    document.getElementById('current-redox').textContent = redoxValue;
-    document.getElementById('redox-status').textContent = getRedoxStatus(data.redox);
+    const redoxElement = document.getElementById('current-redox');
+    redoxElement.textContent = redoxValue;
+    redoxElement.className = `card-value ${getRedoxStatusClass(data.redox).replace('status-', '')}`;
+    document.getElementById('redox-status').textContent = getRedoxStatusShort(data.redox);
     document.getElementById('redox-status').className = `card-status ${getRedoxStatusClass(data.redox)}`;
     
     // Sel
     const saltValue = parseFloat(data.salt).toFixed(1);
-    document.getElementById('current-salt').textContent = saltValue;
-    document.getElementById('salt-status').textContent = getSaltStatus(data.salt);
+    const saltElement = document.getElementById('current-salt');
+    saltElement.textContent = saltValue;
+    saltElement.className = `card-value ${getSaltStatusClass(data.salt).replace('status-', '')}`;
+    document.getElementById('salt-status').textContent = getSaltStatusShort(data.salt);
     document.getElementById('salt-status').className = `card-status ${getSaltStatusClass(data.salt)}`;
     
     // État des pompes
@@ -218,6 +226,12 @@ function getPhStatus(ph) {
     return 'Attention';
 }
 
+function getPhStatusShort(ph) {
+    if (ph >= 7.0 && ph <= 7.4) return '✓';
+    if (ph >= 6.8 && ph <= 7.6) return '~';
+    return '!';
+}
+
 function getPhStatusClass(ph) {
     if (ph >= 7.0 && ph <= 7.4) return 'status-optimal';
     if (ph >= 6.8 && ph <= 7.6) return 'status-warning';
@@ -229,6 +243,12 @@ function getTemperatureStatus(temp) {
     if (temp >= 18 && temp <= 28) return 'Normal';
     if (temp >= 15 && temp <= 32) return 'Acceptable';
     return 'Attention';
+}
+
+function getTemperatureStatusShort(temp) {
+    if (temp >= 18 && temp <= 28) return '✓';
+    if (temp >= 15 && temp <= 32) return '~';
+    return '!';
 }
 
 function getTemperatureStatusClass(temp) {
@@ -244,6 +264,12 @@ function getRedoxStatus(redox) {
     return 'Attention';
 }
 
+function getRedoxStatusShort(redox) {
+    if (redox >= 650 && redox <= 750) return '✓';
+    if (redox >= 600 && redox <= 800) return '~';
+    return '!';
+}
+
 function getRedoxStatusClass(redox) {
     if (redox >= 650 && redox <= 750) return 'status-optimal';
     if (redox >= 600 && redox <= 800) return 'status-warning';
@@ -255,6 +281,12 @@ function getSaltStatus(salt) {
     if (salt >= 3.0 && salt <= 5.0) return 'Optimal';
     if (salt >= 2.5 && salt <= 6.0) return 'Acceptable';
     return 'Attention';
+}
+
+function getSaltStatusShort(salt) {
+    if (salt >= 3.0 && salt <= 5.0) return '✓';
+    if (salt >= 2.5 && salt <= 6.0) return '~';
+    return '!';
 }
 
 function getSaltStatusClass(salt) {
@@ -387,20 +419,20 @@ function updateStatsDisplay(stats) {
     document.getElementById('ph-avg').textContent = stats.avg_ph ? parseFloat(stats.avg_ph).toFixed(2) : '--';
     document.getElementById('ph-max').textContent = stats.max_ph ? parseFloat(stats.max_ph).toFixed(2) : '--';
     
-    // Température
-    document.getElementById('temp-min').textContent = stats.min_temperature ? parseFloat(stats.min_temperature).toFixed(1) : '--';
-    document.getElementById('temp-avg').textContent = stats.avg_temperature ? parseFloat(stats.avg_temperature).toFixed(1) : '--';
-    document.getElementById('temp-max').textContent = stats.max_temperature ? parseFloat(stats.max_temperature).toFixed(1) : '--';
+    // Température (avec unités)
+    document.getElementById('temp-min').textContent = stats.min_temperature ? parseFloat(stats.min_temperature).toFixed(1) + '°C' : '--';
+    document.getElementById('temp-avg').textContent = stats.avg_temperature ? parseFloat(stats.avg_temperature).toFixed(1) + '°C' : '--';
+    document.getElementById('temp-max').textContent = stats.max_temperature ? parseFloat(stats.max_temperature).toFixed(1) + '°C' : '--';
     
-    // Redox
-    document.getElementById('redox-min').textContent = stats.min_redox ? Math.round(parseFloat(stats.min_redox)) : '--';
-    document.getElementById('redox-avg').textContent = stats.avg_redox ? Math.round(parseFloat(stats.avg_redox)) : '--';
-    document.getElementById('redox-max').textContent = stats.max_redox ? Math.round(parseFloat(stats.max_redox)) : '--';
+    // Redox (avec unités)
+    document.getElementById('redox-min').textContent = stats.min_redox ? Math.round(parseFloat(stats.min_redox)) + 'mV' : '--';
+    document.getElementById('redox-avg').textContent = stats.avg_redox ? Math.round(parseFloat(stats.avg_redox)) + 'mV' : '--';
+    document.getElementById('redox-max').textContent = stats.max_redox ? Math.round(parseFloat(stats.max_redox)) + 'mV' : '--';
     
-    // Sel
-    document.getElementById('salt-min').textContent = stats.min_salt ? parseFloat(stats.min_salt).toFixed(1) : '--';
-    document.getElementById('salt-avg').textContent = stats.avg_salt ? parseFloat(stats.avg_salt).toFixed(1) : '--';
-    document.getElementById('salt-max').textContent = stats.max_salt ? parseFloat(stats.max_salt).toFixed(1) : '--';
+    // Sel (avec unités)
+    document.getElementById('salt-min').textContent = stats.min_salt ? parseFloat(stats.min_salt).toFixed(1) + 'g/L' : '--';
+    document.getElementById('salt-avg').textContent = stats.avg_salt ? parseFloat(stats.avg_salt).toFixed(1) + 'g/L' : '--';
+    document.getElementById('salt-max').textContent = stats.max_salt ? parseFloat(stats.max_salt).toFixed(1) + 'g/L' : '--';
 }
 
 // Gestion du changement de période
