@@ -1,5 +1,11 @@
-// Configuration API Cloud
-const API_BASE_URL = 'https://pool-monitor-api.vercel.app/api'; // URL de votre API Vercel
+// Configuration API Cloud  
+// Essayer différentes URLs d'API possibles
+const API_URLS = [
+    'https://pool-monitor-api.vercel.app/api',
+    'https://piscine-pineau-pm.vercel.app/api',
+    'https://regulapp-api.vercel.app/api'
+];
+const API_BASE_URL = API_URLS[0]; // Commencer par la première
 const UPDATE_INTERVAL = 30000; // 30 secondes
 const CHART_COLORS = {
     ph: '#0288D1',        // Bleu piscine principal
