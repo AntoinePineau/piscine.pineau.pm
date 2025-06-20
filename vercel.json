@@ -5,14 +5,8 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
-    "api-cloud/api/*.js": {
+    "api/*.js": {
       "maxDuration": 30
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api-cloud/api/$1"
-    }
-  ]
+  }
 }
