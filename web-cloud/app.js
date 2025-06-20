@@ -1,5 +1,5 @@
-// Configuration API Cloud
-const API_BASE_URL = '/api'; // API sur le même domaine piscine.pineau.pm
+// Configuration API Cloud - pointer vers l'API qui fonctionne déjà
+const API_BASE_URL = 'https://pool-monitor-api.vercel.app/api'; // API séparée qui fonctionne
 const UPDATE_INTERVAL = 120000; // 2 minutes (plus fréquent que les 5 min du RPi pour éviter d'attendre)
 const CHART_COLORS = {
     ph: '#0288D1',        // Bleu piscine principal
