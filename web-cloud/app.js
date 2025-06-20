@@ -44,6 +44,9 @@ async function initializeApp() {
     // Initialisation des informations d'affichage
     updateDataFrequencyInfo(document.getElementById('chart-interval').value);
     
+    // Initialisation responsive pour les valeurs par défaut desktop vs mobile
+    initializeDefaultSettings();
+    
     // Chargement initial des données
     await loadInitialData();
     
@@ -798,6 +801,19 @@ function convertToLocalTime(utcDateString) {
     const utcDate = new Date(utcDateString);
     // Créer une date en heure locale (navigateur gère automatiquement CEST/CET)
     return new Date(utcDate.getTime());
+}
+
+// Initialisation des paramètres par défaut selon l'écran
+function initializeDefaultSettings() {
+    // Si desktop (> 768px), on garde les valeurs HTML par défaut (12h / 5min)
+    // Si mobile, on ajuste pour de meilleures performances
+    if (window.innerWidth <= 768) {
+        // Sur mobile, on préfère des intervalles moins détaillés pour les performances
+        document.getElementById('time-range').value = '4';
+        document.getElementById('chart-interval').value = '15min';
+        updateDataFrequencyInfo('15min');
+    }
+    // Sinon on garde les valeurs par défaut HTML (12h / 5min pour desktop)
 }
 
 // Gestion des erreurs globales
