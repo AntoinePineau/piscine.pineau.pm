@@ -181,7 +181,7 @@ function updateCurrentValues(data) {
     const phValue = parseFloat(data.ph).toFixed(2);
     const phElement = document.getElementById('current-ph');
     phElement.textContent = phValue;
-    phElement.className = `card-value ${getPhStatusClass(data.ph).replace('status-', '')}`;
+    phElement.className = `${getPhStatusClass(data.ph).replace('status-', '')}`;
     document.getElementById('ph-status').textContent = getPhStatusShort(data.ph);
     document.getElementById('ph-status').className = `card-status ${getPhStatusClass(data.ph)}`;
     
@@ -189,7 +189,7 @@ function updateCurrentValues(data) {
     const tempValue = parseFloat(data.temperature).toFixed(1);
     const tempElement = document.getElementById('current-temperature');
     tempElement.textContent = tempValue;
-    tempElement.className = `card-value ${getTemperatureStatusClass(data.temperature).replace('status-', '')}`;
+    tempElement.className = `${getTemperatureStatusClass(data.temperature).replace('status-', '')}`;
     document.getElementById('temperature-status').textContent = getTemperatureStatusShort(data.temperature);
     document.getElementById('temperature-status').className = `card-status ${getTemperatureStatusClass(data.temperature)}`;
     
@@ -197,7 +197,7 @@ function updateCurrentValues(data) {
     const redoxValue = Math.round(data.redox);
     const redoxElement = document.getElementById('current-redox');
     redoxElement.textContent = redoxValue;
-    redoxElement.className = `card-value ${getRedoxStatusClass(data.redox).replace('status-', '')}`;
+    redoxElement.className = `${getRedoxStatusClass(data.redox).replace('status-', '')}`;
     document.getElementById('redox-status').textContent = getRedoxStatusShort(data.redox);
     document.getElementById('redox-status').className = `card-status ${getRedoxStatusClass(data.redox)}`;
     
@@ -205,7 +205,7 @@ function updateCurrentValues(data) {
     const saltValue = parseFloat(data.salt).toFixed(1);
     const saltElement = document.getElementById('current-salt');
     saltElement.textContent = saltValue;
-    saltElement.className = `card-value ${getSaltStatusClass(data.salt).replace('status-', '')}`;
+    saltElement.className = `${getSaltStatusClass(data.salt).replace('status-', '')}`;
     document.getElementById('salt-status').textContent = getSaltStatusShort(data.salt);
     document.getElementById('salt-status').className = `card-status ${getSaltStatusClass(data.salt)}`;
     
