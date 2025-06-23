@@ -23,7 +23,7 @@ BT_UART_CHARACTERISTIC = "e7add780-b042-4876-aae1-112855353cc1"
 
 # URL de l'API cloud - À modifier avec votre URL Vercel
 API_URL = os.getenv('API_URL', 'https://votre-api.vercel.app/api/measurements')
-ERROR_LOG_URL = os.getenv('ERROR_LOG_URL', 'https://votre-api.vercel.app/api/error-logs')
+ERROR_LOG_URL = os.getenv('ERROR_LOG_URL', API_URL.replace('/measurements', '/error-logs'))
 MEASUREMENT_INTERVAL = int(os.getenv('MEASUREMENT_INTERVAL', 30))  # secondes
 API_TIMEOUT = int(os.getenv('API_TIMEOUT', 15))  # secondes
 MAX_RETRIES = int(os.getenv('MAX_RETRIES', 3))

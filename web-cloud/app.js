@@ -413,8 +413,10 @@ async function loadRecentErrors() {
             updateErrorTooltip();
         }
     } catch (error) {
-        console.error('Erreur lors du chargement des erreurs:', error);
-        // On continue même si le chargement des erreurs échoue
+        // Si l'endpoint n'existe pas encore (404) ou autre erreur, on continue silencieusement
+        console.debug('Chargement des erreurs échoué (normal si pas encore d\'erreurs):', error.message);
+        recentErrors = [];
+        updateErrorTooltip();
     }
 }
 
