@@ -13,6 +13,7 @@ let updateTimer;
 let charts = {};
 let apiStatus = 'loading'; // 'loading', 'ok', 'error'
 let lastSuccessfulUpdate = null;
+let recentErrors = [];
 
 // Configuration auto de l'API selon l'environnement
 function getApiUrl() {
@@ -101,7 +102,8 @@ async function loadInitialData() {
         await Promise.all([
             loadLatestData(),
             loadStats(),
-            loadChartData()
+            loadChartData(),
+            loadRecentErrors()
         ]);
         updateApiStatus('ok', 'API fonctionnelle');
     } catch (error) {
@@ -401,11 +403,115 @@ function updateApiStatus(status, message) {
     }
 }
 
+// Chargement des erreurs récentes
+async function loadRecentErrors() {
+    try {
+        const result = await apiCall('/error-logs?hours=24&limit=10');
+        
+        if (result.success && result.data) {
+            recentErrors = result.data;
+            updateErrorTooltip();
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement des erreurs:', error);
+        // On continue même si le chargement des erreurs échoue
+    }
+}
+
+// Mise à jour du tooltip d'erreurs
+function updateErrorTooltip() {
+    const lastUpdateElement = document.getElementById('last-update');
+    
+    // Nettoyer le tooltip existant
+    removeErrorTooltip();
+    
+    if (recentErrors.length > 0) {
+        // Ajouter un indicateur visuel d'erreurs
+        lastUpdateElement.classList.add('has-errors');
+        
+        // Ajouter les gestionnaires d'événements pour le tooltip
+        setupErrorTooltip(lastUpdateElement);
+    } else {
+        lastUpdateElement.classList.remove('has-errors');
+    }
+}
+
+// Configuration du tooltip avec JavaScript
+function setupErrorTooltip(element) {
+    let tooltip = null;
+    
+    element.addEventListener('mouseenter', showErrorTooltip);
+    element.addEventListener('mouseleave', hideErrorTooltip);
+    
+    function showErrorTooltip(e) {
+        if (tooltip) return;
+        
+        tooltip = document.createElement('div');
+        tooltip.className = 'error-tooltip-popup';
+        
+        let content = '<h4>Erreurs récentes (24h):</h4>';
+        
+        recentErrors.slice(0, 5).forEach(error => {
+            const errorTime = formatDate(error.timestamp);
+            const errorType = error.error_type.replace(/_/g, ' ');
+            const errorMsg = error.error_message.length > 80 
+                ? error.error_message.substring(0, 80) + '...' 
+                : error.error_message;
+            
+            content += `
+                <div class="error-item">
+                    <strong>${errorTime}</strong><br>
+                    <span class="error-type">${errorType}</span><br>
+                    <span class="error-message">${errorMsg}</span>
+                </div>
+            `;
+        });
+        
+        if (recentErrors.length > 5) {
+            content += `<div class="error-more">... et ${recentErrors.length - 5} autres erreurs</div>`;
+        }
+        
+        tooltip.innerHTML = content;
+        document.body.appendChild(tooltip);
+        
+        // Positionner le tooltip
+        const rect = element.getBoundingClientRect();
+        tooltip.style.left = rect.left + (rect.width / 2) + 'px';
+        tooltip.style.top = (rect.top - 10) + 'px';
+        
+        // Animation d'apparition
+        requestAnimationFrame(() => {
+            tooltip.classList.add('visible');
+        });
+    }
+    
+    function hideErrorTooltip() {
+        if (tooltip) {
+            tooltip.classList.remove('visible');
+            setTimeout(() => {
+                if (tooltip && tooltip.parentNode) {
+                    tooltip.parentNode.removeChild(tooltip);
+                }
+                tooltip = null;
+            }, 300);
+        }
+    }
+}
+
+// Fonction pour nettoyer les anciens tooltips
+function removeErrorTooltip() {
+    const existing = document.querySelectorAll('.error-tooltip-popup');
+    existing.forEach(el => el.remove());
+}
+
 // Mise à jour de l'heure de dernière mise à jour
 function updateLastUpdateTime(timestamp) {
     const lastUpdateElement = document.getElementById('last-update');
     const date = new Date(timestamp);
     lastUpdateElement.textContent = `Dernière mesure: ${formatDate(timestamp)}`;
+    
+    // Maintenir le tooltip des erreurs si il y en a
+    updateErrorTooltip();
 }
 
 // Chargement des statistiques
@@ -695,6 +801,10 @@ function startAutoUpdate() {
         try {
             await loadLatestData();
             await loadStats();
+            // Charger les erreurs moins fréquemment
+            if (Math.random() < 0.3) { // 30% de chance à chaque update
+                await loadRecentErrors();
+            }
         } catch (error) {
             // L'erreur est déjà gérée dans loadLatestData
             console.log('Mise à jour automatique échouée, nouvelle tentative dans', UPDATE_INTERVAL/1000, 'secondes');

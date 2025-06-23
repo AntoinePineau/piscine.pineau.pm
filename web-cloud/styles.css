@@ -18,6 +18,7 @@
     --border-radius: 12px;
     --pool-gradient: linear-gradient(135deg, #0288D1, #00ACC1, #26C6DA);
     --water-gradient: linear-gradient(180deg, #E3F2FD, #BBDEFB);
+    --tooltip-background: rgba(13, 71, 161, 0.95);
 }
 
 /* Reset et base */
@@ -989,5 +990,115 @@ body {
     
     .stat-item {
         background: linear-gradient(135deg, #2a2a2a, #1e1e1e);
+    }
+}
+
+/* Styles pour les tooltips d'erreur */
+#last-update.has-errors {
+    position: relative;
+    cursor: help;
+    color: var(--warning-color);
+    font-weight: 500;
+}
+
+#last-update.has-errors::after {
+    content: "⚠️";
+    margin-left: 5px;
+    font-size: 0.9em;
+}
+
+/* Tooltip popup avec JavaScript */
+.error-tooltip-popup {
+    position: fixed;
+    background: var(--tooltip-background);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    max-width: 350px;
+    min-width: 250px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translate(-50%, -100%);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+
+.error-tooltip-popup.visible {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 10px));
+}
+
+.error-tooltip-popup::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-top-color: var(--tooltip-background);
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Styles pour le contenu du tooltip */
+.error-tooltip-popup h4 {
+    color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 5px;
+}
+
+.error-item {
+    margin-bottom: 10px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid var(--error-color);
+}
+
+.error-item:last-child {
+    margin-bottom: 0;
+}
+
+.error-type {
+    color: var(--warning-color);
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.error-message {
+    color: #fff;
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+.error-more {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+}
+
+/* Responsive pour les tooltips */
+@media (max-width: 768px) {
+    .error-tooltip-popup {
+        max-width: 280px;
+        min-width: 200px;
+        font-size: 0.8rem;
     }
 }

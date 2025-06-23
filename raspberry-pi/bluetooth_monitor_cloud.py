@@ -11,7 +11,7 @@ import logging
 import json
 import time
 import os
-from datetime import datetime
+from datetime import datetime, time as dt_time, timedelta
 from bleak import BleakClient, BleakScanner
 import requests
 from requests.exceptions import RequestException
@@ -23,9 +23,14 @@ BT_UART_CHARACTERISTIC = "e7add780-b042-4876-aae1-112855353cc1"
 
 # URL de l'API cloud - À modifier avec votre URL Vercel
 API_URL = os.getenv('API_URL', 'https://votre-api.vercel.app/api/measurements')
+ERROR_LOG_URL = os.getenv('ERROR_LOG_URL', 'https://votre-api.vercel.app/api/error-logs')
 MEASUREMENT_INTERVAL = int(os.getenv('MEASUREMENT_INTERVAL', 30))  # secondes
 API_TIMEOUT = int(os.getenv('API_TIMEOUT', 15))  # secondes
 MAX_RETRIES = int(os.getenv('MAX_RETRIES', 3))
+
+# Horaires de fonctionnement (7h - 21h)
+OPERATION_START_HOUR = int(os.getenv('OPERATION_START_HOUR', 7))
+OPERATION_END_HOUR = int(os.getenv('OPERATION_END_HOUR', 21))
 
 # Configuration du logging
 log_level = os.getenv('LOG_LEVEL', 'INFO')
@@ -46,6 +51,43 @@ class PoolRegulatorMonitor:
         self.is_connected = False
         self.failed_attempts = 0
         self.last_successful_send = None
+        self.last_error_logged = None
+    
+    def is_operation_time(self):
+        """Vérifie si nous sommes dans les horaires de fonctionnement (7h-21h)"""
+        now = datetime.now()
+        current_hour = now.hour
+        return OPERATION_START_HOUR <= current_hour < OPERATION_END_HOUR
+    
+    async def log_error_to_api(self, error_type, error_message, context=None):
+        """Envoie les erreurs vers l'API pour logging"""
+        try:
+            error_data = {
+                'timestamp': datetime.utcnow().isoformat(),
+                'error_type': error_type,
+                'error_message': str(error_message),
+                'context': context or {},
+                'source': 'raspberry_pi_monitor'
+            }
+            
+            response = requests.post(
+                ERROR_LOG_URL,
+                json=error_data,
+                timeout=API_TIMEOUT,
+                headers={
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'PoolMonitor/1.0'
+                }
+            )
+            
+            if response.status_code in [200, 201]:
+                self.last_error_logged = datetime.now()
+                logger.debug(f"Erreur loggée dans l'API: {error_type}")
+            else:
+                logger.warning(f"Échec du logging d'erreur: {response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Erreur lors du logging d'erreur: {e}")
         
     async def find_regulator(self):
         """Recherche le régulateur CORELEC"""
@@ -70,8 +112,11 @@ class PoolRegulatorMonitor:
                     
         except Exception as e:
             logger.error(f"Erreur lors de la recherche: {e}")
+            await self.log_error_to_api("bluetooth_search_error", str(e))
         
-        raise Exception("Aucun régulateur CORELEC trouvé")
+        error_msg = "Aucun régulateur CORELEC trouvé"
+        await self.log_error_to_api("device_not_found", error_msg)
+        raise Exception(error_msg)
     
     async def connect(self, address):
         """Connexion au régulateur avec retry"""
@@ -227,7 +272,12 @@ class PoolRegulatorMonitor:
                 await asyncio.sleep(2 ** attempt)  # Backoff exponentiel
         
         self.failed_attempts += 1
-        logger.error(f"✗ Échec envoi API après {MAX_RETRIES} tentatives (échecs consécutifs: {self.failed_attempts})")
+        error_msg = f"✗ Échec envoi API après {MAX_RETRIES} tentatives (échecs consécutifs: {self.failed_attempts})"
+        logger.error(error_msg)
+        await self.log_error_to_api("api_send_failure", error_msg, {
+            'failed_attempts': self.failed_attempts,
+            'max_retries': MAX_RETRIES
+        })
     
     async def send_command(self, command):
         """Envoi d'une commande au régulateur"""
@@ -279,7 +329,7 @@ class PoolRegulatorMonitor:
             raise Exception("Connexion Bluetooth interrompue")
     
     async def monitoring_loop(self):
-        """Boucle principale de monitoring"""
+        """Boucle principale de monitoring avec vérification horaire"""
         logger.info(f"Démarrage du monitoring (intervalle: {MEASUREMENT_INTERVAL}s)...")
         
         health_check_interval = 300  # 5 minutes
@@ -287,6 +337,11 @@ class PoolRegulatorMonitor:
         
         while self.is_connected:
             try:
+                # Vérification des horaires de fonctionnement
+                if not self.is_operation_time():
+                    logger.info(f"Fin des horaires de fonctionnement ({OPERATION_END_HOUR}h atteinte)")
+                    break
+                
                 current_time = time.time()
                 
                 # Health check périodique
@@ -307,13 +362,41 @@ class PoolRegulatorMonitor:
                 
             except Exception as e:
                 logger.error(f"Erreur dans la boucle de monitoring: {e}")
+                await self.log_error_to_api("monitoring_error", str(e), {
+                    'monitoring_active': True,
+                    'connected': self.is_connected
+                })
                 await asyncio.sleep(5)
                 break
     
     async def run(self):
-        """Fonction principale avec gestion de reconnexion"""
+        """Fonction principale avec gestion de reconnexion et horaires"""
         while True:
             try:
+                # Vérification des horaires de fonctionnement
+                if not self.is_operation_time():
+                    current_time = datetime.now()
+                    next_start = current_time.replace(
+                        hour=OPERATION_START_HOUR, minute=0, second=0, microsecond=0
+                    )
+                    
+                    # Si on est après 21h, attendre jusqu'à 7h le lendemain
+                    if current_time.hour >= OPERATION_END_HOUR:
+                        next_start = next_start + timedelta(days=1)
+                    
+                    wait_seconds = (next_start - current_time).total_seconds()
+                    logger.info(f"Hors horaires de fonctionnement ({OPERATION_START_HOUR}h-{OPERATION_END_HOUR}h). Attente de {wait_seconds/3600:.1f}h jusqu'à {next_start.strftime('%H:%M')}")
+                    
+                    # Attendre par blocs de 30 minutes pour pouvoir réagir aux interruptions
+                    while wait_seconds > 0 and not self.is_operation_time():
+                        sleep_time = min(1800, wait_seconds)  # max 30 minutes
+                        await asyncio.sleep(sleep_time)
+                        wait_seconds -= sleep_time
+                    
+                    continue
+                
+                logger.info(f"Début de la session de monitoring (horaire: {OPERATION_START_HOUR}h-{OPERATION_END_HOUR}h)")
+                
                 # Recherche et connexion au régulateur
                 address = await self.find_regulator()
                 await self.connect(address)
@@ -321,7 +404,7 @@ class PoolRegulatorMonitor:
                 # Initialisation
                 await self.initialize_regulator()
                 
-                # Boucle de monitoring
+                # Boucle de monitoring avec vérification horaire
                 await self.monitoring_loop()
                 
             except KeyboardInterrupt:
@@ -329,6 +412,10 @@ class PoolRegulatorMonitor:
                 break
             except Exception as e:
                 logger.error(f"Erreur: {e}")
+                await self.log_error_to_api("system_error", str(e), {
+                    'failed_attempts': self.failed_attempts,
+                    'is_connected': self.is_connected
+                })
                 self.failed_attempts += 1
                 
                 # Délai progressif en cas d'échecs répétés
