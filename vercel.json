@@ -25,6 +25,10 @@
     {
       "source": "/api/measurements",
       "destination": "/api/measurements"
+    },
+    {
+      "source": "/api/error-logs",
+      "destination": "/api/error-logs"
     }
   ]
 }
