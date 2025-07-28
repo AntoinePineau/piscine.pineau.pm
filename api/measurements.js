@@ -1,11 +1,5 @@
 // API endpoint for Raspberry Pi measurements
-const { Pool } = require('pg');
-
-// Configuration de la base PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const { pool, cache } = require('../lib/db-pool');
 
 module.exports = async (req, res) => {
   // Configuration CORS

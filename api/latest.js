@@ -1,10 +1,5 @@
 // GET /api/measurements/latest
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const { pool, cache } = require('../lib/db-pool');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,14 +11,24 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const query = 'SELECT * FROM measurements ORDER BY timestamp DESC LIMIT 1';
-    const result = await pool.query(query);
+    // Vérifier le cache d'abord
+    const cacheKey = cache.key('latest');
+    let data = cache.get(cacheKey);
     
-    if (result.rows.length === 0) {
-      return res.json({ success: false, message: 'Aucune donnée trouvée' });
+    if (!data) {
+      // Seulement si pas en cache
+      const query = 'SELECT * FROM measurements ORDER BY timestamp DESC LIMIT 1';
+      const result = await pool.query(query);
+      
+      if (result.rows.length === 0) {
+        return res.json({ success: false, message: 'Aucune donnée trouvée' });
+      }
+      
+      data = result.rows[0];
+      cache.set(cacheKey, data, cache.TTL.latest);
     }
     
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data });
   } catch (err) {
     console.error('Erreur récupération dernière mesure:', err);
     res.status(500).json({ success: false, error: err.message });
