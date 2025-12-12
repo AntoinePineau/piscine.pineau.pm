@@ -63,12 +63,8 @@ class StorageService {
    * Récupère la dernière mesure
    */
   async getLatestMeasurement() {
-    const cached = this._getCached('latest');
-    if (cached) return cached;
-
+    // Pas de cache pour latest - on veut toujours la mesure la plus récente
     const latest = await this.drive.getLatestEntry('measurements');
-    this._setCached('latest', latest, this.cacheTTL.latest);
-
     return latest;
   }
 
