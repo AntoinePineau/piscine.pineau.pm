@@ -31,5 +31,8 @@
     "vercel"
   ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "vercel": "^50.0.0"
+  }
 }
