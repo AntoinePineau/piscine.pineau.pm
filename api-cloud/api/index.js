@@ -6,7 +6,6 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const { getStorageService } = require('../lib/storage');
-const alertsRouter = require('./alerts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -329,8 +328,55 @@ app.get('/api/error-logs', async (req, res) => {
 
 // ==================== ALERTS ====================
 
-// Monter le router des alertes
-app.use('/api/alerts', alertsRouter);
+// GET /api/alerts - Récupérer les alertes actives
+app.get('/api/alerts', async (req, res) => {
+  try {
+    const { active } = req.query;
+
+    let alerts;
+    if (active === 'true') {
+      alerts = await getStorage().getActiveAlerts();
+    } else {
+      const hours = req.query.hours ? parseInt(req.query.hours) : 24;
+      alerts = await getStorage().getRecentAlerts(hours);
+    }
+
+    res.json({
+      success: true,
+      data: alerts
+    });
+
+  } catch (err) {
+    console.error('Erreur récupération alertes:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des alertes',
+      message: err.message
+    });
+  }
+});
+
+// POST /api/alerts/:id/acknowledge - Acquitter une alerte
+app.post('/api/alerts/:id/acknowledge', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await getStorage().acknowledgeAlert(id);
+
+    res.json({
+      success: true,
+      data: result,
+      message: 'Alerte acquittée avec succès'
+    });
+
+  } catch (err) {
+    console.error('Erreur acquittement alerte:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'acquittement de l\'alerte',
+      message: err.message
+    });
+  }
+});
 
 // ==================== MAINTENANCE ====================
 
