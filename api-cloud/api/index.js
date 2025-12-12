@@ -1,19 +1,15 @@
 const express = require('express');
-const { Pool } = require('pg');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 require('dotenv').config();
 
+const { getStorageService } = require('../lib/storage');
+const alertsRouter = require('./alerts');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Configuration de la base PostgreSQL (Neon, Supabase, ou autre)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
 
 // Middleware
 app.use(helmet());
@@ -35,53 +31,17 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Initialisation de la base de données
-async function initializeDatabase() {
-  try {
-    const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS measurements (
-        id SERIAL PRIMARY KEY,
-        timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        ph DECIMAL(4,2),
-        redox DECIMAL(6,2),
-        temperature DECIMAL(4,1),
-        salt DECIMAL(4,1),
-        alarm INTEGER,
-        warning INTEGER,
-        alarm_redox INTEGER,
-        regulator_type INTEGER,
-        pump_plus_active BOOLEAN,
-        pump_minus_active BOOLEAN,
-        pump_chlore_active BOOLEAN,
-        filter_relay_active BOOLEAN,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_measurements_timestamp ON measurements(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_measurements_created_at ON measurements(created_at);
-      
-      CREATE TABLE IF NOT EXISTS error_logs (
-        id SERIAL PRIMARY KEY,
-        timestamp TIMESTAMPTZ NOT NULL,
-        error_type VARCHAR(100) NOT NULL,
-        error_message TEXT NOT NULL,
-        context JSONB DEFAULT '{}',
-        source VARCHAR(50) DEFAULT 'unknown',
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_error_logs_type ON error_logs(error_type);
-      CREATE INDEX IF NOT EXISTS idx_error_logs_source ON error_logs(source);
-    `;
-    
-    await pool.query(createTableQuery);
-    console.log('Base de données PostgreSQL initialisée');
-  } catch (err) {
-    console.error('Erreur initialisation base de données:', err);
-    throw err;
+// Storage service
+let storage = null;
+
+function getStorage() {
+  if (!storage) {
+    storage = getStorageService();
   }
+  return storage;
 }
+
+// ==================== MEASUREMENTS ====================
 
 // POST /api/measurements - Ajouter une mesure
 app.post('/api/measurements', async (req, res) => {
@@ -102,174 +62,130 @@ app.post('/api/measurements', async (req, res) => {
       filter_relay_active
     } = req.body;
 
-    const query = `
-      INSERT INTO measurements (
-        timestamp, ph, redox, temperature, salt, alarm, warning, 
-        alarm_redox, regulator_type, pump_plus_active, pump_minus_active,
-        pump_chlore_active, filter_relay_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      RETURNING id
-    `;
+    const measurement = {
+      timestamp,
+      ph,
+      redox,
+      temperature,
+      salt,
+      alarm,
+      warning,
+      alarm_redox,
+      regulator_type,
+      pump_plus_active,
+      pump_minus_active,
+      pump_chlore_active,
+      filter_relay_active
+    };
 
-    const values = [
-      timestamp || new Date().toISOString(),
-      ph, redox, temperature, salt, alarm, warning,
-      alarm_redox, regulator_type, pump_plus_active, pump_minus_active,
-      pump_chlore_active, filter_relay_active
-    ];
+    const result = await getStorage().insertMeasurement(measurement);
 
-    const result = await pool.query(query, values);
-    
-    console.log(`Mesure ajoutée avec l'ID: ${result.rows[0].id}`);
-    res.status(200).json({ 
-      success: true, 
-      id: result.rows[0].id,
+    console.log(`Mesure ajoutée: ${result.timestamp}`);
+    res.status(200).json({
+      success: true,
+      data: result,
       message: 'Mesure ajoutée avec succès'
     });
 
   } catch (err) {
     console.error('Erreur insertion:', err);
-    res.status(500).json({ error: 'Erreur lors de l\'insertion des données' });
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'insertion des données',
+      message: err.message
+    });
   }
 });
 
 // GET /api/measurements - Récupérer les mesures
 app.get('/api/measurements', async (req, res) => {
   try {
-    const { limit = 100, offset = 0, from, to } = req.query;
-    
-    let query = 'SELECT * FROM measurements';
-    let values = [];
-    let valueIndex = 1;
-    
-    // Filtrage par date
-    const conditions = [];
-    if (from) {
-      conditions.push(`timestamp >= $${valueIndex++}`);
-      values.push(from);
-    }
-    if (to) {
-      conditions.push(`timestamp <= $${valueIndex++}`);
-      values.push(to);
-    }
-    
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-    
-    query += ` ORDER BY timestamp DESC LIMIT $${valueIndex++} OFFSET $${valueIndex}`;
-    values.push(parseInt(limit), parseInt(offset));
+    const { limit, offset, from, to } = req.query;
 
-    const result = await pool.query(query, values);
-    
+    const options = {
+      limit: limit ? parseInt(limit) : 100,
+      offset: offset ? parseInt(offset) : 0,
+      from,
+      to
+    };
+
+    const result = await getStorage().getMeasurements(options);
+
     res.json({
       success: true,
-      data: result.rows,
-      count: result.rows.length
+      data: result.data,
+      total: result.total,
+      count: result.data.length,
+      limit: result.limit,
+      offset: result.offset
     });
 
   } catch (err) {
     console.error('Erreur récupération:', err);
-    res.status(500).json({ error: 'Erreur lors de la récupération des données' });
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des données',
+      message: err.message
+    });
   }
 });
 
 // GET /api/measurements/latest - Dernière mesure
 app.get('/api/measurements/latest', async (req, res) => {
   try {
-    const query = 'SELECT * FROM measurements ORDER BY timestamp DESC LIMIT 1';
-    const result = await pool.query(query);
-    
+    const latest = await getStorage().getLatestMeasurement();
+
     res.json({
       success: true,
-      data: result.rows[0] || null
+      data: latest
     });
 
   } catch (err) {
     console.error('Erreur récupération dernière mesure:', err);
-    res.status(500).json({ error: 'Erreur lors de la récupération de la dernière mesure' });
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de la dernière mesure',
+      message: err.message
+    });
   }
 });
 
 // GET /api/measurements/stats - Statistiques
 app.get('/api/measurements/stats', async (req, res) => {
   try {
-    const { hours = 24 } = req.query;
-    
-    const query = `
-      SELECT 
-        COUNT(*) as count,
-        AVG(ph) as avg_ph,
-        MIN(ph) as min_ph,
-        MAX(ph) as max_ph,
-        AVG(temperature) as avg_temperature,
-        MIN(temperature) as min_temperature,
-        MAX(temperature) as max_temperature,
-        AVG(redox) as avg_redox,
-        MIN(redox) as min_redox,
-        MAX(redox) as max_redox,
-        AVG(salt) as avg_salt,
-        MIN(salt) as min_salt,
-        MAX(salt) as max_salt
-      FROM measurements 
-      WHERE timestamp >= NOW() - INTERVAL '${parseInt(hours)} hours'
-    `;
+    const hours = req.query.hours ? parseInt(req.query.hours) : 24;
 
-    const result = await pool.query(query);
-    
+    const stats = await getStorage().getStats(hours);
+
     res.json({
       success: true,
-      data: result.rows[0],
+      data: stats,
       period_hours: hours
     });
 
   } catch (err) {
     console.error('Erreur récupération stats:', err);
-    res.status(500).json({ error: 'Erreur lors de la récupération des statistiques' });
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des statistiques',
+      message: err.message
+    });
   }
 });
 
 // GET /api/measurements/chart-data - Données pour graphiques
 app.get('/api/measurements/chart-data', async (req, res) => {
   try {
-    const { hours = 24, interval = 'hour' } = req.query;
-    
-    let groupBy;
-    switch (interval) {
-      case 'minute':
-        groupBy = "DATE_TRUNC('minute', timestamp)";
-        break;
-      case 'hour':
-        groupBy = "DATE_TRUNC('hour', timestamp)";
-        break;
-      case 'day':
-        groupBy = "DATE_TRUNC('day', timestamp)";
-        break;
-      default:
-        groupBy = "DATE_TRUNC('hour', timestamp)";
-    }
-    
-    const query = `
-      SELECT 
-        ${groupBy} as period,
-        AVG(ph) as ph,
-        AVG(redox) as redox,
-        AVG(temperature) as temperature,
-        AVG(salt) as salt,
-        COUNT(*) as count
-      FROM measurements 
-      WHERE timestamp >= NOW() - INTERVAL '${parseInt(hours)} hours'
-      GROUP BY ${groupBy}
-      ORDER BY period ASC
-    `;
+    const hours = req.query.hours ? parseInt(req.query.hours) : 24;
+    const interval = req.query.interval || 'hour';
 
-    const result = await pool.query(query);
-    
+    const data = await getStorage().getChartData({ hours, interval });
+
     // Formatage des données pour Highcharts
     const chartData = {
-      categories: result.rows.map(row => {
-        const date = new Date(row.period);
-        return interval === 'minute' 
+      categories: data.map(row => {
+        const date = new Date(row.timestamp);
+        return interval === 'minute'
           ? date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
           : interval === 'hour'
           ? date.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', hour: '2-digit' })
@@ -278,27 +194,27 @@ app.get('/api/measurements/chart-data', async (req, res) => {
       series: [
         {
           name: 'pH',
-          data: result.rows.map(row => row.ph ? parseFloat(parseFloat(row.ph).toFixed(2)) : null),
+          data: data.map(row => row.ph),
           yAxis: 0
         },
         {
           name: 'Redox (mV)',
-          data: result.rows.map(row => row.redox ? parseFloat(parseFloat(row.redox).toFixed(0)) : null),
+          data: data.map(row => row.redox),
           yAxis: 1
         },
         {
           name: 'Température (°C)',
-          data: result.rows.map(row => row.temperature ? parseFloat(parseFloat(row.temperature).toFixed(1)) : null),
+          data: data.map(row => row.temperature),
           yAxis: 2
         },
         {
           name: 'Sel (g/L)',
-          data: result.rows.map(row => row.salt ? parseFloat(parseFloat(row.salt).toFixed(1)) : null),
+          data: data.map(row => row.salt),
           yAxis: 3
         }
       ]
     };
-    
+
     res.json({
       success: true,
       data: chartData,
@@ -308,9 +224,39 @@ app.get('/api/measurements/chart-data', async (req, res) => {
 
   } catch (err) {
     console.error('Erreur récupération données graphique:', err);
-    res.status(500).json({ error: 'Erreur lors de la récupération des données graphique' });
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des données graphique',
+      message: err.message
+    });
   }
 });
+
+// GET /api/measurements/history - Historique (moyennes journalières)
+app.get('/api/measurements/history', async (req, res) => {
+  try {
+    const days = req.query.days ? parseInt(req.query.days) : 30;
+
+    const history = await getStorage().getDailyAverages(days);
+
+    res.json({
+      success: true,
+      data: history,
+      count: history.length,
+      period_days: days
+    });
+
+  } catch (err) {
+    console.error('Erreur récupération historique:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de l\'historique',
+      message: err.message
+    });
+  }
+});
+
+// ==================== ERROR LOGS ====================
 
 // POST /api/error-logs - Ajouter un log d'erreur
 app.post('/api/error-logs', async (req, res) => {
@@ -324,34 +270,29 @@ app.post('/api/error-logs', async (req, res) => {
       });
     }
 
-    const query = `
-      INSERT INTO error_logs (timestamp, error_type, error_message, context, source)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id
-    `;
-
-    const values = [
-      new Date(timestamp).toISOString(),
+    const error = {
+      timestamp,
       error_type,
       error_message,
-      JSON.stringify(context || {}),
-      source || 'unknown'
-    ];
+      context,
+      source
+    };
 
-    const result = await pool.query(query, values);
-    
-    console.log(`Log d'erreur ajouté avec l'ID: ${result.rows[0].id}`);
+    const result = await getStorage().logError(error);
+
+    console.log(`Log d'erreur ajouté: ${result.timestamp}`);
     res.status(201).json({
       success: true,
-      id: result.rows[0].id,
+      data: result,
       message: 'Log d\'erreur enregistré'
     });
 
   } catch (err) {
     console.error('Erreur insertion log d\'erreur:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'enregistrement du log' 
+      error: 'Erreur lors de l\'enregistrement du log',
+      message: err.message
     });
   }
 });
@@ -359,55 +300,87 @@ app.post('/api/error-logs', async (req, res) => {
 // GET /api/error-logs - Récupérer les logs d'erreur
 app.get('/api/error-logs', async (req, res) => {
   try {
-    const { hours = 24, limit = 50, error_type } = req.query;
-    
-    let query = `
-      SELECT id, timestamp, error_type, error_message, context, source, created_at
-      FROM error_logs 
-      WHERE timestamp >= NOW() - INTERVAL '${parseInt(hours)} hours'
-    `;
-    
-    let values = [];
-    let valueIndex = 1;
-    
-    if (error_type) {
-      query += ` AND error_type = $${valueIndex++}`;
-      values.push(error_type);
-    }
-    
-    query += ` ORDER BY timestamp DESC LIMIT $${valueIndex}`;
-    values.push(parseInt(limit));
+    const { hours, limit, error_type } = req.query;
 
-    const result = await pool.query(query, values);
-    
+    const options = {
+      hours: hours ? parseInt(hours) : 24,
+      limit: limit ? parseInt(limit) : 50,
+      error_type
+    };
+
+    const logs = await getStorage().getErrorLogs(options);
+
     res.json({
       success: true,
-      data: result.rows,
-      count: result.rows.length,
-      period_hours: hours
+      data: logs,
+      count: logs.length,
+      period_hours: options.hours
     });
 
   } catch (err) {
     console.error('Erreur récupération logs d\'erreur:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des logs' 
+      error: 'Erreur lors de la récupération des logs',
+      message: err.message
     });
   }
 });
 
+// ==================== ALERTS ====================
+
+// Monter le router des alertes
+app.use('/api/alerts', alertsRouter);
+
+// ==================== MAINTENANCE ====================
+
+// POST /api/cron - Tâche de maintenance quotidienne
+app.post('/api/cron', async (req, res) => {
+  try {
+    // Vérifier le secret
+    const secret = req.headers['x-cron-secret'] || req.query.secret;
+    if (secret !== process.env.CRON_SECRET) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      });
+    }
+
+    const result = await getStorage().performMaintenance();
+
+    console.log('Maintenance effectuée:', result);
+    res.json({
+      success: true,
+      ...result,
+      message: 'Maintenance effectuée avec succès'
+    });
+
+  } catch (err) {
+    console.error('Erreur maintenance:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la maintenance',
+      message: err.message
+    });
+  }
+});
+
+// ==================== HEALTH CHECK ====================
+
 // GET /api/health - Health check
 app.get('/api/health', async (req, res) => {
   try {
-    // Test de connexion à la base
-    await pool.query('SELECT 1');
-    
+    // Test de connexion à Google Drive
+    const storage = getStorage();
+    const latest = await storage.getLatestMeasurement();
+
     res.json({
       success: true,
       status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      database: 'connected'
+      storage: 'connected',
+      lastMeasurement: latest ? latest.timestamp : null
     });
   } catch (err) {
     res.status(500).json({
@@ -415,40 +388,51 @@ app.get('/api/health', async (req, res) => {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      database: 'disconnected',
+      storage: 'disconnected',
       error: err.message
     });
   }
 });
 
+// ==================== ERROR HANDLERS ====================
+
 // Gestionnaire d'erreurs
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Erreur interne du serveur' });
+  res.status(500).json({
+    success: false,
+    error: 'Erreur interne du serveur',
+    message: process.env.NODE_ENV !== 'production' ? err.message : undefined
+  });
 });
 
 // Route 404
 app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Endpoint non trouvé' });
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint non trouvé'
+  });
 });
 
-// Initialize database on first request
-let isInitialized = false;
-
-async function ensureInitialized() {
-  if (!isInitialized) {
-    await initializeDatabase();
-    isInitialized = true;
-  }
+// Démarrage serveur local (si pas sur Vercel)
+if (require.main === module || process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 API démarrée sur http://localhost:${PORT}`);
+    console.log(`📊 Mode: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`💾 Storage: Google Drive JSON`);
+  });
 }
 
 // Vercel serverless function handler
 module.exports = async (req, res) => {
   try {
-    await ensureInitialized();
     return app(req, res);
   } catch (error) {
     console.error('Erreur handler Vercel:', error);
-    return res.status(500).json({ error: 'Erreur interne du serveur' });
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur interne du serveur',
+      message: error.message
+    });
   }
 };

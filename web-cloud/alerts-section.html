@@ -1,0 +1,79 @@
+<!--
+  Section d'alertes intelligentes Gemini
+
+  À intégrer dans votre dashboard principal (index.html)
+
+  Instructions :
+  1. Ajouter cet extrait dans votre index.html où vous voulez afficher les alertes
+  2. Ajouter <link rel="stylesheet" href="alerts.css"> dans le <head>
+  3. Ajouter <script src="alerts.js"></script> avant </body>
+-->
+
+<section id="gemini-alerts-section" class="alerts-section">
+  <div class="section-header">
+    <h2>
+      <i class="fas fa-robot"></i>
+      Alertes & Conseils Intelligents
+    </h2>
+    <p class="section-description">
+      Analyse automatique par Gemini AI avec recommandations personnalisées pour l'entretien de votre piscine
+    </p>
+  </div>
+
+  <div id="gemini-alerts-container">
+    <!-- Les alertes seront injectées ici par alerts.js -->
+    <div class="alert-card loading">
+      <div class="alert-header">
+        <div class="alert-icon">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <div class="alert-meta">
+          <span class="alert-severity">Chargement</span>
+          <span class="alert-time">Récupération des alertes...</span>
+        </div>
+      </div>
+      <div class="alert-body">
+        <div class="alert-summary">
+          Connexion à l'API et chargement des analyses Gemini...
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Styles pour l'en-tête de section */
+  .section-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .section-header h2 {
+    margin: 0 0 0.5rem 0;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+  }
+
+  .section-header h2 i {
+    color: #2196F3;
+  }
+
+  .section-description {
+    margin: 0;
+    color: #666;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 768px) {
+    .section-header h2 {
+      font-size: 1.25rem;
+    }
+
+    .section-description {
+      font-size: 0.85rem;
+    }
+  }
+</style>
